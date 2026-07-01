@@ -1,0 +1,21 @@
+{
+  "categories": {
+    "clothing": { "name": "Одежда", "commission": 0.20, "min": 0.15, "max": 0.25 },
+    "electronics": { "name": "Электроника", "commission": 0.075, "min": 0.05, "max": 0.10 },
+    "appliances": { "name": "Бытовая техника", "commission": 0.10, "min": 0.08, "max": 0.12 },
+    "beauty": { "name": "Красота и здоровье", "commission": 0.215, "min": 0.18, "max": 0.25 },
+    "home": { "name": "Дом и сад", "commission": 0.15, "min": 0.12, "max": 0.18 }
+  },
+  "charity": {
+    "threshold": 300,
+    "lte300": 10.00,
+    "gt300": 1.00,
+    "note": "Актуально на июнь 2026. При цене ≤300₽ — 10₽, при цене >300₽ — 1₽ (или 0, если минимум не применяется)."
+  },
+  "logistics": {
+    "FBS": { "base": 45, "perKg": 15 },
+    "FBO": { "base": 35, "perKg": 12 }
+  },
+  "acquiring": 0.015,
+  "processing": 20
+}
