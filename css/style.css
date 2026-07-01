@@ -1,24 +1,25 @@
+/* Ozon Calculator — MVP Styles */
+
 :root {
-  --bg: #0f172a;
-  --card: #1e293b;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #10b981;
-  --accent2: #34d399;
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --accent: #10b981;   /* зелёный Ozon */
+  --accent-dark: #059669;
   --danger: #ef4444;
-  --warning: #f59e0b;
-  --border: #334155;
-  --input: #1e293b;
-  --focus: #38bdf8;
+  --border: #e5e7eb;
+  --shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
+
 body {
-  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
-  min-height: 100vh;
 }
 
 .container {
@@ -27,147 +28,180 @@ body {
   padding: 24px 16px;
 }
 
+/* Header */
 header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
-.logo {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--accent2);
+header h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
 }
-.subtitle {
+header p {
+  margin: 0;
   color: var(--muted);
-  margin-top: 4px;
+  font-size: 0.95rem;
 }
 
-.grid {
+/* Layout */
+.calculator {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
-@media (min-width: 768px) {
-  .grid { grid-template-columns: 340px 1fr; }
+@media (max-width: 768px) {
+  .calculator {
+    grid-template-columns: 1fr;
+  }
 }
 
-.form-section, .result-section {
+/* Cards */
+.card {
   background: var(--card);
-  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
-}
-
-h2 {
-  font-size: 1.15rem;
-  margin-bottom: 16px;
-  color: #f8fafc;
-}
-
-h3 {
-  font-size: 1rem;
-  margin: 20px 0 10px;
-  color: #cbd5e1;
-}
-
-form label {
-  display: block;
-  margin-bottom: 14px;
-  font-size: 0.92rem;
-  color: var(--muted);
-}
-
-form input, form select {
-  width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  box-shadow: var(--shadow);
   border: 1px solid var(--border);
-  background: var(--input);
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
   color: var(--text);
-  font-size: 1rem;
-  transition: border-color .15s;
-}
-form input:focus, form select:focus {
-  outline: none;
-  border-color: var(--focus);
 }
 
-.btn-calc {
+/* Form */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+input[type="number"],
+select {
   width: 100%;
-  margin-top: 8px;
-  padding: 12px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
-  font-size: 1.05rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform .08s, box-shadow .15s;
-}
-.btn-calc:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16,185,129,.25); }
-.btn-calc:active { transform: translateY(0); }
-
-.profit-card {
-  background: #0b1220;
+  padding: 10px 12px;
+  font-size: 1rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+}
+
+/* Scheme toggle */
+.scheme-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.scheme-toggle label {
+  flex: 1;
   text-align: center;
-  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  background: #fff;
+  transition: all 0.15s;
 }
-.profit-card.accent {
-  border-color: rgba(56,189,248,.35);
+
+.scheme-toggle input {
+  display: none;
 }
-.profit-value {
-  font-size: 1.9rem;
-  font-weight: 700;
-  color: var(--accent2);
+
+.scheme-toggle input:checked + label {
+  border-color: var(--accent);
+  background: rgba(16,185,129,0.08);
+  font-weight: 600;
 }
-.profit-label {
+
+/* Results */
+.result-block {
+  margin-bottom: 18px;
+}
+
+.result-block .label {
   font-size: 0.85rem;
   color: var(--muted);
-  margin-top: 4px;
+  margin-bottom: 4px;
 }
 
-.breakdown {
+.big-number {
+  font-size: 2rem;
+  font-weight: 700;
+}
+.big-number.positive { color: var(--accent-dark); }
+.big-number.negative { color: var(--danger); }
+
+/* Breakdown table */
+table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
-.breakdown td, .breakdown th {
-  padding: 10px 8px;
+table td {
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
-.breakdown td:first-child, .breakdown th:first-child { text-align: left; }
-.breakdown td:last-child, .breakdown th:last-child { text-align: right; font-weight: 600; }
-.breakdown tr.total td {
-  border-top: 2px solid var(--border);
+table td:last-child {
+  text-align: right;
+  font-weight: 500;
+}
+table tr:last-child td {
   border-bottom: none;
-  font-weight: 700;
-  color: #f8fafc;
 }
 
-#recommendPrice {
-  background: #0b1220;
-  border: 1px dashed var(--border);
+/* Compare block */
+.compare-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.compare-item {
+  background: var(--bg);
+  padding: 10px 12px;
   border-radius: 8px;
-  padding: 12px;
-  font-size: 0.95rem;
-  color: #cbd5e1;
+  font-size: 0.92rem;
 }
 
+/* Warning */
+.warning {
+  display: none;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+/* Footer */
 footer {
   text-align: center;
-  margin-top: 28px;
+  margin-top: 24px;
+  font-size: 0.8rem;
   color: var(--muted);
-  font-size: 0.85rem;
 }
-footer a { color: var(--focus); text-decoration: none; }
-
-@media (max-width: 480px) {
-  .logo { font-size: 1.4rem; }
-  .profit-value { font-size: 1.5rem; }
-  .btn-calc { font-size: 1rem; }
+footer a {
+  color: var(--accent-dark);
+  text-decoration: none;
 }

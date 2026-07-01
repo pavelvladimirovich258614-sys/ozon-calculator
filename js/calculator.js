@@ -1,117 +1,205 @@
-/* Ozon Unit-Economics Calculator — MVP */
-let RATES = null;
+/**
+ * Ozon Unit Economics Calculator — MVP
+ * Чистая функция расчёта + рендер результатов
+ */
 
-const FALLBACK_RATES = {
-  "categories": {
-    "clothing": { "name": "Одежда", "commission": 0.20 },
-    "electronics": { "name": "Электроника", "commission": 0.075 },
-    "appliances": { "name": "Бытовая техника", "commission": 0.10 },
-    "beauty": { "name": "Красота и здоровье", "commission": 0.215 },
-    "home": { "name": "Дом и сад", "commission": 0.15 }
-  },
-  "charity": { "threshold": 300, "lte300": 10.00, "gt300": 1.00 },
-  "logistics": { "FBS": { "base": 45, "perKg": 15 }, "FBO": { "base": 35, "perKg": 12 } },
-  "acquiring": 0.015,
-  "processing": 20
-};
+let rates = null;
 
+// Загрузка справочника тарифов
 async function loadRates() {
-  if (RATES) return;
   try {
     const res = await fetch('data/rates.json');
-    if (res.ok) { RATES = await res.json(); return; }
-  } catch (e) { /* file:// или CORS */ }
-  RATES = FALLBACK_RATES;
+    rates = await res.json();
+  } catch (e) {
+    console.error('Не удалось загрузить rates.json', e);
+    alert('Ошибка загрузки тарифов. Проверьте файл data/rates.json');
+  }
 }
 
-function fmt(n) { return n.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function fmt0(n) { return n.toLocaleString('ru-RU', {maximumFractionDigits:0}); }
+// Получение ставки комиссии по категории
+function getCommissionRate(categoryId) {
+  if (!rates) return 0;
+  const cat = rates.categories.find(c => c.id === categoryId);
+  return cat ? cat.commission : 0;
+}
 
-function calculateProfit(purchasePrice, salePrice, categoryKey, scheme, weight) {
-  if (!RATES) return null;
-  const cat = RATES.categories[categoryKey];
-  const commission = salePrice * cat.commission;
-  const charity = salePrice <= RATES.charity.threshold ? RATES.charity.lte300 : RATES.charity.gt300;
-  const log = RATES.logistics[scheme];
-  const logistics = log.base + (weight * log.perKg);
-  const acquiring = salePrice * RATES.acquiring;
-  const processing = RATES.processing;
-  const totalCosts = purchasePrice + commission + charity + logistics + acquiring + processing;
-  const profit = salePrice - totalCosts;
-  const margin = salePrice > 0 ? (profit / salePrice) * 100 : 0;
+// Получение благотворительности по цене (lookup-table)
+function getCharity(salePrice) {
+  if (!rates || !rates.charity) return 0;
+  const row = rates.charity.find(r => salePrice >= r.minPrice && salePrice <= r.maxPrice);
+  return row ? row.amount : 0;
+}
+
+// Расчёт логистики
+function getLogistics(scheme, weightKg) {
+  if (!rates || !rates.logistics) return 0;
+  const cfg = rates.logistics[scheme];
+  if (!cfg) return 0;
+  const w = Math.max(0, parseFloat(weightKg) || 0);
+  const cost = cfg.base + (w * cfg.perKg);
+  return Math.min(Math.max(cost, cfg.min), cfg.max);
+}
+
+// === ЧИСТАЯ ФУНКЦИЯ РАСЧЁТА ===
+function calculateProfit({ purchasePrice, salePrice, category, scheme, weightKg }) {
+  const purchase = Math.max(0, parseFloat(purchasePrice) || 0);
+  const sale     = Math.max(0, parseFloat(salePrice) || 0);
+  const weight   = Math.max(0, parseFloat(weightKg) || 0);
+
+  const commissionRate = getCommissionRate(category);
+  const commission     = sale * commissionRate;
+  const charity        = getCharity(sale);
+  const logistics      = getLogistics(scheme, weight);
+  const acquiring      = sale * (rates ? rates.acquiring : 0.015);
+  const processing     = rates ? rates.processing : 20;
+
+  const totalCosts = purchase + commission + charity + logistics + acquiring + processing;
+  const profit     = sale - totalCosts;
+  const margin     = sale > 0 ? (profit / sale) * 100 : 0;
+  const costPrice    = totalCosts;
+
   return {
-    profit, margin,
-    breakdown: { purchasePrice, commission, charity, logistics, acquiring, processing, totalCosts }
+    profit:     profit,
+    margin:     margin,
+    costPrice:  costPrice,
+    breakdown: {
+      purchase,
+      commission,
+      charity,
+      logistics,
+      acquiring,
+      processing
+    }
   };
 }
 
-function findOptimal(purchasePrice, categoryKey, scheme, weight) {
-  let best = null;
-  for (let p = 200; p <= 1200; p += 10) {
-    const r = calculateProfit(purchasePrice, p, categoryKey, scheme, weight);
-    if (r.profit > 0 && (!best || r.profit > best.profit)) best = { price: p, ...r };
+// Подбор рекомендуемой цены (максимум прибыли в диапазоне закуп+1 .. закуп+1000)
+function findRecommendedPrice({ purchasePrice, category, scheme, weightKg }) {
+  const purchase = parseFloat(purchasePrice) || 0;
+  let bestPrice = purchase + 1;
+  let bestProfit = -Infinity;
+
+  for (let price = Math.ceil(purchase + 1); price <= purchase + 1000; price++) {
+    const r = calculateProfit({
+      purchasePrice: purchase,
+      salePrice: price,
+      category,
+      scheme,
+      weightKg
+    });
+    if (r.profit > bestProfit) {
+      bestProfit = r.profit;
+      bestPrice = price;
+    }
   }
-  return best;
+  return { price: bestPrice, profit: bestProfit };
 }
 
-function render(res) {
-  const section = document.getElementById('resultSection');
-  section.style.display = 'block';
+// === РЕНДЕР ===
+function formatMoney(n) {
+  return Math.round(n).toLocaleString('ru-RU') + ' ₽';
+}
+function formatPercent(n) {
+  return n.toFixed(1).replace('.', ',') + '%';
+}
 
-  const profitEl = document.getElementById('profitValue');
-  const marginEl = document.getElementById('marginValue');
-  profitEl.textContent = `${fmt(res.profit)} ₽`;
-  profitEl.style.color = res.profit < 0 ? 'var(--danger)' : (res.profit > 0 ? 'var(--accent2)' : 'var(--muted)');
-  marginEl.textContent = `${fmt(res.margin)} %`;
-  marginEl.style.color = profitEl.style.color;
+function getInputs() {
+  return {
+    purchasePrice: document.getElementById('purchasePrice').value,
+    salePrice:     document.getElementById('salePrice').value,
+    category:      document.getElementById('category').value,
+    scheme:        document.querySelector('input[name="scheme"]:checked')?.value || 'FBS',
+    weightKg:      document.getElementById('weightKg').value
+  };
+}
 
-  const b = res.breakdown;
-  document.getElementById('bPurchase').textContent = `${fmt(b.purchasePrice)} ₽`;
-  document.getElementById('bCommission').textContent = `${fmt(b.commission)} ₽`;
-  document.getElementById('bScheme').textContent = res.scheme;
-  document.getElementById('bLogistics').textContent = `${fmt(b.logistics)} ₽`;
-  document.getElementById('bCharity').textContent = `${fmt(b.charity)} ₽`;
-  document.getElementById('bAcquiring').textContent = `${fmt(b.acquiring)} ₽`;
-  document.getElementById('bProcessing').textContent = `${fmt(b.processing)} ₽`;
-  document.getElementById('bTotal').textContent = `${fmt(b.totalCosts)} ₽`;
+function render() {
+  const inputs = getInputs();
+  const result = calculateProfit(inputs);
 
-  // Recommendation
-  const opt = findOptimal(b.purchasePrice, res.categoryKey, res.scheme, res.weight);
-  const recEl = document.getElementById('recommendPrice');
-  if (opt) {
-    recEl.innerHTML = `Оптимальная цена: <strong>${fmt0(opt.price)} ₽</strong> → прибыль <strong>${fmt(opt.profit)} ₽</strong> (${fmt(opt.margin)}% маржи)`;
+  // Основные цифры
+  const profitEl = document.getElementById('res-profit');
+  const marginEl = document.getElementById('res-margin');
+  const costEl   = document.getElementById('res-cost');
+
+  profitEl.textContent = (result.profit >= 0 ? '+' : '') + formatMoney(result.profit);
+  profitEl.className = 'big-number ' + (result.profit >= 0 ? 'positive' : 'negative');
+  marginEl.textContent = formatPercent(result.margin);
+  costEl.textContent   = formatMoney(result.costPrice);
+
+  // Детальный разбор
+  const tbody = document.getElementById('breakdown-body');
+  tbody.innerHTML = `
+    <tr><td>Закупочная цена</td><td>${formatMoney(result.breakdown.purchase)}</td></tr>
+    <tr><td>Комиссия Ozon</td><td>${formatMoney(result.breakdown.commission)}</td></tr>
+    <tr><td>Логистика (${inputs.scheme})</td><td>${formatMoney(result.breakdown.logistics)}</td></tr>
+    <tr><td>Благотворительность</td><td>${formatMoney(result.breakdown.charity)}</td></tr>
+    <tr><td>Эквайринг (~1,5%)</td><td>${formatMoney(result.breakdown.acquiring)}</td></tr>
+    <tr><td>Обработка отправления</td><td>${formatMoney(result.breakdown.processing)}</td></tr>
+  `;
+
+  // Рекомендуемая цена
+  const rec = findRecommendedPrice(inputs);
+  document.getElementById('res-recommended').textContent =
+    `Оптимальная цена: ${formatMoney(rec.price)} (прибыль ${formatMoney(rec.profit)})`;
+
+  // Сравнение: "эффект порога" — 300₽ (сбор 10₽) vs 301₽ (сбор 1₽)
+  const at300    = calculateProfit({ ...inputs, salePrice: 300 });
+  const at301    = calculateProfit({ ...inputs, salePrice: 301 });
+  const current  = result;
+  const price    = parseFloat(inputs.salePrice) || 0;
+  
+  document.getElementById('compare-under').textContent =
+    `300 ₽ → прибыль ${formatMoney(at300.profit)} | Сбор: ${formatMoney(at300.breakdown.charity)}`;
+  document.getElementById('compare-current').textContent =
+    price === 300
+      ? `301 ₽ → прибыль ${formatMoney(at301.profit)} | Сбор: ${formatMoney(at301.breakdown.charity)} 💡 Поднимите цену на 1 ₽!`
+      : `${price} ₽ → прибыль ${formatMoney(current.profit)} | Сбор: ${formatMoney(current.breakdown.charity)}`;
+
+  // Предупреждение о благотворительности
+  const charityWarn = document.getElementById('charity-warning');
+  if (parseFloat(inputs.salePrice) <= 300 && parseFloat(inputs.salePrice) > 0) {
+    charityWarn.style.display = 'block';
   } else {
-    recEl.textContent = 'При текущих параметрах прибыль невозможна. Попробуйте снизить закупочную цену или выбрать другую схему.';
+    charityWarn.style.display = 'none';
+  }
+}
+
+// Debounce 300 мс
+let debounceTimer;
+function debouncedRender() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(render, 300);
+}
+
+// Инициализация
+async function init() {
+  await loadRates();
+
+  // Заполнить select категориями
+  const sel = document.getElementById('category');
+  if (rates && rates.categories) {
+    rates.categories.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+    // Дефолтная категория — первая
+    sel.value = rates.categories[0].id;
   }
 
-  // Compare below/above 300
-  const below = calculateProfit(b.purchasePrice, 300, res.categoryKey, res.scheme, res.weight);
-  const above = calculateProfit(b.purchasePrice, 350, res.categoryKey, res.scheme, res.weight);
-  const cBelow = document.getElementById('compareBelow');
-  const cAbove = document.getElementById('compareAbove');
-  cBelow.innerHTML = `<td>300 ₽</td><td>${fmt(below.profit)} ₽</td><td>${fmt(below.margin)}%</td>`;
-  cAbove.innerHTML = `<td>350 ₽</td><td>${fmt(above.profit)} ₽</td><td>${fmt(above.margin)}%</td>`;
+  // Слушатели
+  document.getElementById('purchasePrice').addEventListener('input', debouncedRender);
+  document.getElementById('salePrice').addEventListener('input', debouncedRender);
+  document.getElementById('category').addEventListener('change', debouncedRender);
+  document.getElementById('weightKg').addEventListener('input', debouncedRender);
+  document.querySelectorAll('input[name="scheme"]').forEach(el => {
+    el.addEventListener('change', debouncedRender);
+  });
+
+  // Первый рендер
+  render();
 }
 
-async function onSubmit(e) {
-  e.preventDefault();
-  const purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
-  const salePrice = parseFloat(document.getElementById('salePrice').value) || 0;
-  const category = document.getElementById('category').value;
-  const scheme = document.getElementById('scheme').value;
-  const weight = parseFloat(document.getElementById('weight').value) || 0;
-
-  if (!RATES) await loadRates();
-  const res = calculateProfit(purchasePrice, salePrice, category, scheme, weight);
-  res.categoryKey = category;
-  res.scheme = scheme;
-  res.weight = weight;
-  render(res);
-}
-
-(async function init() {
-  await loadRates();
-  document.getElementById('calcForm').addEventListener('submit', onSubmit);
-  // First calculation with defaults
-  document.getElementById('calcForm').dispatchEvent(new Event('submit'));
-})();
+init();

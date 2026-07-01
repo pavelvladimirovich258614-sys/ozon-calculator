@@ -1,21 +1,37 @@
 {
-  "categories": {
-    "clothing": { "name": "Одежда", "commission": 0.20, "min": 0.15, "max": 0.25 },
-    "electronics": { "name": "Электроника", "commission": 0.075, "min": 0.05, "max": 0.10 },
-    "appliances": { "name": "Бытовая техника", "commission": 0.10, "min": 0.08, "max": 0.12 },
-    "beauty": { "name": "Красота и здоровье", "commission": 0.215, "min": 0.18, "max": 0.25 },
-    "home": { "name": "Дом и сад", "commission": 0.15, "min": 0.12, "max": 0.18 }
+  "meta": {
+    "updated": "2026-07-01",
+    "source": "docs.ozon.ru (placeholder — заменить на актуальные тарифы)"
   },
-  "charity": {
-    "threshold": 300,
-    "lte300": 10.00,
-    "gt300": 1.00,
-    "note": "Актуально на июнь 2026. При цене ≤300₽ — 10₽, при цене >300₽ — 1₽ (или 0, если минимум не применяется)."
-  },
+  "categories": [
+    {"id": "clothes",        "name": "Одежда",            "commission": 0.20},
+    {"id": "electronics",    "name": "Электроника",       "commission": 0.075},
+    {"id": "home_appliance", "name": "Бытовая техника",   "commission": 0.10},
+    {"id": "beauty",         "name": "Красота и здоровье", "commission": 0.215},
+    {"id": "home_garden",    "name": "Дом и сад",         "commission": 0.15},
+    {"id": "toys",           "name": "Детские товары",    "commission": 0.18},
+    {"id": "books",          "name": "Книги",             "commission": 0.12},
+    {"id": "food",           "name": "Продукты",          "commission": 0.10}
+  ],
+  "charity": [
+    {"minPrice": 0,    "maxPrice": 300,  "amount": 10.00},
+    {"minPrice": 301,  "maxPrice": 450,  "amount": 1.00},
+    {"minPrice": 451,  "maxPrice": 999999, "amount": 0.00}
+  ],
   "logistics": {
-    "FBS": { "base": 45, "perKg": 15 },
-    "FBO": { "base": 35, "perKg": 12 }
+    "FBS": {
+      "base": 50.0,
+      "perKg": 20.0,
+      "min": 50.0,
+      "max": 500.0
+    },
+    "FBO": {
+      "base": 40.0,
+      "perKg": 15.0,
+      "min": 40.0,
+      "max": 400.0
+    }
   },
   "acquiring": 0.015,
-  "processing": 20
+  "processing": 20.0
 }
